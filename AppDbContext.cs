@@ -12,6 +12,7 @@ namespace WishAppAzFunction
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             optionsBuilder.UseSqlite(connectionString: "Data Source=Wishapp.db");
+            //optionsBuilder.UseInMemoryDatabase(databaseName: "WishesAppDB");
         }
     }
 }

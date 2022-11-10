@@ -1,11 +1,13 @@
-using System;
-using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Twilio.TwiML;
+using Twilio.AspNet.Core;
+using System.Linq;
+using System;
 using Newtonsoft.Json;
 
 namespace WishAppAzFunction
@@ -13,23 +15,31 @@ namespace WishAppAzFunction
     public static class WishPlayer
     {
         [FunctionName("WishPlayer")]
-        public static async Task<IActionResult> Run(
+        public static IActionResult Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
             ILogger log)
         {
-            log.LogInformation("C# HTTP trigger function processed a request.");
+            AppDbContext context = new AppDbContext();
 
-            string name = req.Query["name"];
+            log.LogInformation(JsonConvert.SerializeObject(context.WishItems.ToList()));
 
-            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            dynamic data = JsonConvert.DeserializeObject(requestBody);
-            name = name ?? data?.name;
+            int savedMessages = context.WishItems.Count();
+            string wish = string.Empty;
+            if(savedMessages > 0)
+            {
+                var rand = new Random().Next(context.WishItems.Count());
+                wish = context.WishItems.AsEnumerable().ElementAt(rand).Message;
+            }
+            else 
+            {
+                wish = "No wishes present yet, check back later. Happy holidays!";
+            }
 
-            string responseMessage = string.IsNullOrEmpty(name)
-                ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                : $"Hello, {name}. This HTTP triggered function executed successfully.";
+            var response = new VoiceResponse();
+            response.Say($"Reading out a wish for you", voice: "alice");
+            response.Say(wish);
 
-            return new OkObjectResult(responseMessage);
+            return new TwiMLResult(response);
         }
     }
 }
